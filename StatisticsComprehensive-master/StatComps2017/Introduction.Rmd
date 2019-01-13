@@ -1,0 +1,8 @@
+
+# Introduction 
+
+## Motivation 
+
+Airline-caused delays (late arrival of 15 minutes) totaled 20.2 million minutes in 2015. About 14.3 million minutes of delay was caused by weather, congested airports and air traffic system complications. Severe weather and security concerns resulted in delays of about 17.5 million minutes while about 25 million minutes of delay was allotted to undetermined reasons like a previously delayed flight. In total, this resulted in about 77 million minutes of delay which converts to about 1 million and 283 thousand hours of delay in 2015 [@weatherDelayNews].
+
+The purpose of this study was manifold. The intent was to explain the occurrence of departure delays from 2008 to 2016 which resulted in about 1 million and 283 thousand hours of lost time in 2015. Additionally, the interest was in exploring big data platforms like Hadoop and Apache Spark. The main intent of this work was the exploration of the deep learning platform, H2O, and its application on predicting departure delays. 

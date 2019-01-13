@@ -1,0 +1,92 @@
+
+# Shiny Explorations
+
+## Introduction
+
+For this analysis, I used the Flights dataset from the United States Department of Transportation Bureau of Transportation Statistics. Data was set up in the YARN-client cluster in the Hadoop server from years 2008-2016. Initially it contained variables like year, month and day of the trip, departure delay, arrival delay, carrier, tailnumber, distance covered, flight number, flight origin, destination and scheduled flight time. Additional predictors were created to better gauge the departure delay. These variables included day of week, season and weekend status and hour of flight delay. 
+
+## Web Scraping
+Since carrier, plane origin and destination airport information was provided as two and three letter code names, following the guidelines set by the International Air Transport Association (IATA), additional data was scraped from web to include the origin and destination airport information as well as the carrier and state names. This data was then merged with the flights dataset. Data scraping was performed using rvest package and the SelectorGadget tool, a Chrome extension that allows for easy CSS webpage selection (see Appendix 2 for complete scraping code).
+
+## Shiny App
+Shiny App was used for initial exploratory analysis. Graphical, tabular and weather analysis was performed. In addition, networks were constructed to visualize number of flights and departure delays between airports. Images from the shiny app are shown below each commentary. The app itself can be accessed at https://r.amherst.edu/apps/ajavaid17/Comps2017Flights/FlightsExpo/ (wait time of about half a minute and ignore red ` errors).
+
+### Graphical Analysis
+Graphical shiny analysis was performed on flights with departure delays greater than 90 minutes. About 1590467 flights satistied this criterion and were used for analysis. Departure delays were analyzed graphically by carrier, month, hour, week and weekend status predictors. Mean departure delay was computed by averaging the departure delay in minutes over the user specified year and carrier, month, hour, week or weekend status predictors. The package ggplot2 was used for graphical analysis and reactivity was employed to add dynamicity to the graphs. An example shiny output of changes in mean departure delay from 2008 to 2016 grouped by weekend is shown by `r ref("shiny1")`.
+
+```{r shiny11, results = "asis", echo = FALSE, fig.align="center"}
+label(path = "figure/AppFlights1.png", 
+      caption = "Graphical Analysis", 
+      label = "shiny1", type = "figure", scale = 0.5)
+```
+
+
+#### Departure delay by carrier:
+According to the carrier graphical analysis, Hawaiian airlines had a consistently higher delay in comparison to other airlines from 2008-2016. Hawaiian also experienced the most fluctuations in the average departure delays. Southwest and US Air had lowest delays. The overall trend though points to slightly increased departure delays from 2008 to 2016. 
+
+#### Departure delay by month/seasons:
+Graphically, differences in departure delay by month appeared to be indistinguishable. To better differentiate the delays by month, season variable was created. Delays for summer appear to be slightly higher than the delays for fall, spring and winter from years 2008 to 2012. The general trend points to an increased delay from 2008 to 2016. 
+
+#### Departure delay by hour/time of day status:
+Hours 0-4 (12 am to 4 am) appeared to be most unpredictable in mean departure delay. In comparison, mean departure delay seemed to stablize after 2 pm continuing in the evening hours. Though there was a slight delay in the evening hours, it did not appear to be as problematic as the early morning hour delays. 
+
+#### Departure delay by week/weekend:
+Differences in mean departure delay appeared to be indistinguishable by week status. In comparison, there appeared to be higher delays on weekends than weekdays. 
+
+\clearpage
+
+### Tabular Analysis 
+The tabular analysis showed the mean departure delay for all flights for the specified origin and destination states. In addition, the panel showed departure delays for all flights for the user selected origin and destination airports. Data Table was used which provided searching functionalities to the app. An output of flights from New York to California from the shiny app for the tabular analysis section is shown by `r ref("shiny2")`.
+
+```{r shiny22, results = "asis", echo = FALSE, fig.align="center"}
+label(path = "figure/Shiny2.png", 
+      caption = "Tabular Analysis", 
+      label = "shiny2", type = "figure", scale = 0.4)
+```
+
+\clearpage
+
+### Graphical Weather Analysis
+In addition to the general analysis for all flights with departure delays greater than 90 minutes from 2008 to 2016, analysis was performed to gauge the effect of weather on total delay, quantified by sum of departure and arrival delays for LaGuardia, John F. Kennedy and Newark Liberty International Airport. Weather analysis was only performed for 2013 since data for this year was readily available in the nycflights13 package. In comparison, weather analysis from 2008 to 2016 would have entailed possible pipeline constructions to fetch data from the National Climatic Data Center (NOAA) by the timestamp specified by the flights data in the Hadoop clusters, a project pursued in subsequent work. The weather data from the nycflights13 package contained about 135059 observations. Effect of weather metrics like temperature, dewpoint, humidity, wind direction, wind speed, wind gust, precipitation, pressure and visibility was analyzed on the total delay over measures like week, weekend, month and seasons. An output from the shiny app is shown in `r ref("shiny3")` depicting changes in total delay by temperature and weekend status.
+
+```{r shiny33, results = "asis", echo = FALSE, fig.align="center"}
+label(path = "figure/AppImage2.png", 
+      caption = "Weather Analysis", 
+      label = "shiny3", type = "figure", scale = 0.5)
+```
+
+#### Total delay by week and weather:
+Total delay did not show considerable changes by temperature over the weeks besides a rise in departure delay on Friday with low temperature and a rise in departure delay on Sunday with increase in temperature. Similarly there did not appear to be a visible pattern in total delay by weather patterns over day of week. A general trend pointed towards an increase in total delay with  visibility and a decrease in total delay with increased pressure. Increase in humidity appeared to increase departure delay. While Saturday experienced a decrease in total delay with an increase in humidity, this decrease was not necessarily particularly distinguished to be commented on. 
+
+#### Total delay by weekend and weather:
+There appeared to be a higher increase in total delay with an increase in temperature on a weekend than a weekday. This higher increase in total delay was also visible with an increase in dewpoint and precipitation on weekends than weekdays. In comparison, increase in total delay on a weekday than weekends with an increase in humidity is apparent. Decrease in total delay with an increase in pressure and visibility was apparent for both weekdays and weekends. For low temperatures, dewpoint, precipitation, humidity, pressure and visibility, differences in weekday and weekends total delays do not appear to be distinguishable. 
+
+#### Total delay by month and weather:
+December experienced higher total delays with an increase in temperature in comparison to other months. Differences in total delay with respect to humidity appeared to be indistinguishable by month. Increase in humidity seemed to produce a higher increase in total delay for March, February and December in comparison to other months. There did not appear to be considerable changes in total delays by pressure over the months were not observed though there was a presence of a general trend towards decreased total delay with an increase in pressure. 
+
+#### Total delay by season and weather:
+In regards to seasonal variations, there appeared to be a higher increase in total delays with an increase in temperature during winter than during fall and spring. Increase in dewpoint produced a higher increase in total delays for February and March than for other months. Differences in total delay by month did not appear to be distinguishable for pressure and humidity measures. Overall trend pointed to an increase in total delay with an increase in humidity and a decrease in total delay with an increase in pressure for all months. 
+
+\clearpage
+
+### Flights Network Analysis
+Fourth panel in shiny showed a network of randomly sampled 500 flights with their destination and origin airports specified as vertices and the width of the edges representing the extent of the departure delay. The network only included flights with delays greater than 90 minutes. Airports can be highilghted on the network from the dropdown menu. In addition, the data table for the network was shown which could be queried for the numerically exact departure delay. This graph was constructed with igraph and the visnetwork package. The departure delays were normalized to show appropriate scaling. An output from shiny for a random network as well as the associated data table is shown by `r ref("shiny4")`.
+
+```{r shiny44, results = "asis", echo = FALSE, fig.align="center"}
+label(path = "figure/Shiny4.png", 
+      caption = "Flights Network", 
+      label = "shiny4", type = "figure", scale = 0.5)
+```
+
+\clearpage
+
+### Mapping Flights 
+Last shiny panel showed the mean departure delay by airport from 2008 to 2016 in the United States for all flights with departure delay greater than 90 minutes. Hovering over the points displayed the state, airport as well as the average departure delay for that airport. From the graph, Wyoming Cheyenne Regional Airport appeared to have a visibly high mean departure delay of 247.71 minutes. Other airports with high departure delay included Greater Rockford Airport in Illinois with a mean departure delay of 240.22 minutes and Bemidji Regional Airport in Minnesota with mean departure delay of 235.76 minutes. Overall trend pointed to low departure delays along the West coast. An output from the shiny app is shown by `r ref("shiny5")`.
+
+```{r shiny55, results = "asis", echo = FALSE, fig.align="center"}
+label(path = "figure/Shiny5.png", 
+      caption = "Maps Analysis", 
+      label = "shiny5", type = "figure", scale = 0.5)
+```
+
+\clearpage

@@ -1,0 +1,3 @@
+
+#### Identify Function Name Conflicts in R Packages
+##### r-conflicts Shiny application, accessible at https://aj17.shinyapps.io/r-conflicts/, finds package function description and function name conflicts between two packages using the R documentation API. Specify package name and click on *Find Package Version* to get a list of possible package versions. Choose a version and click *Show Package Functions* to find package metrics and list of functions with description for each package. Click *Show Function Conflicts* to get a list and description of functions with same name between two packages.

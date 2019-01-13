@@ -1,0 +1,139 @@
+
+# Logistical Reasoning
+
+## Introduction 
+H2O platform was used to construct a logistic model to predict occurrence of departure delay over 20 minutes from 2008 to 2016. Delay of 30 minutes was chosen since it provided adequate sample for flights both experiencing and not experiencing departure delay. Analysis was performed on a random sample of 200000 observations. This size was easily transferable to the Spark environment while larger sample sizes crashed the server. Occurrence of delay over 30 minutes was assessed against year, arrival delay, carrier, air time, distance, week and season predictors. Initially, hour, month and weekend status predictors were also used to estimate the incidence of delay though they appeared to have no importance and therefore were not used in subsequent analysis. 
+
+## H2O Connection 
+After the installation process, h2o.init() was used to establish H2O connection to local host at port 54321. Default connection is established with 1GB of memory. Additionl cluster memory can be allocated with max_mem_size specification. Since this project was performed using the Apache Spark platform, connection with YARN Hadoop cluster was established. This connection entailed a cluster initialization in the shell followed by a Spark connection as shown below. 
+
+```{r yarn, eval=FALSE}
+library(sparklyr)
+library(rsparkling)
+library(dplyr)
+options(rsparkling.sparklingwater.version = "1.6.8")
+
+#Initialize a cluster (without Hadoop connection)
+h2o.init()
+
+#Connect to YARN through shell
+kinit()
+klist  
+
+#Connect to Apache Spark Hadoop in markdown 
+sc <- spark_connect(master = "yarn-client")
+```
+
+## Spark Data Integration 
+Once the connection was estabished, flights dataset was created (see Appendix 2 for full details on the dataset creation). Final flights dataset creation involved copying data from Hadoop to Spark environment from 2008 to 2016. The dataset columns were then renamed. The final dataset was saved in HadoopLogMod.Rda and copied in the Spark environment with subsequent use. Data copy process from Hadoop to Spark is shown below. If a local connection was established instead of Hadoop, R data frame can be converted to H2OFrame using the as.h2o command. 
+
+```{r datacopy, eval=FALSE}
+#If connection is established to Hadoop:
+load("HadoopLogMod.Rda")
+set.seed(134)
+sample <- FullDatLog[sample(nrow(FullDatLog), 
+                              200000, replace = FALSE, 
+                              prob = NULL),]
+LogDataMod <- copy_to(sc, sample, "LogData", 
+                      overwrite = TRUE)  
+
+
+#If no connection established to Hadoop: 
+#Read from local file
+FlightsDat = h2o.importFile(localH2O, path = prosFlights)
+#Convert to h2o data frame
+FlightsDat <- as.h2o(sample)
+```
+
+## Data Partitioning 
+After the data was copied in the Spark environment, it was partitioned in test and training sets. A 75/25 partition was used as shown below where training set had about 75% of the data (149789 observations) and test set had about 25% (50211 observations). The partition was not strictly 75/25 since the split is not performed exactly. 
+
+```{r parti, eval = FALSE}
+#Partitioning data frame in Spark 
+partitions <- LogDataMod %>%
+  sdf_partition(training = 0.75, test = 0.25, seed = 1099)
+
+#Partitioning data locally within the H2O platform
+splits <- h2o.splitFrame(LogDataMod, c(0.75,0.25), seed=1099)
+```
+
+## Checking Conditions
+Since the response (dep_delayIn) was a binary predictor indicating the incidence of departure delay of 30 minutes, linearity was assumed. Randomness and independence may not necessarily be valid assumptions since typically a late flight results in subsequent delays. Analysis of the randomness and independence assumption will require tracking flight schedules from 2008 to 2016. Future studies could assess this assumption. This study proceeded with caution. 
+
+## Modeling 
+Once the data was partitioned in test and training sets, logistic regression model was specifed as shown. The setdiff command took the set difference between predictors in the training dataset and the set of predictors specified in the command (dep_DelayIn, orig_id, hour, month, weekend). The h2o.glm function can be used to specify a binomial family function. Additional arguments in the h2o.glm function include nfolds (specifies the number of folds for cross validation), alpha (0-1 numeric that specifies the elastic-net mixing parameter, set to ensure regularization and consequently prevent overfitting), lambda (specifies a non-negative shrinkage parameter) and lambda_search (logical indicating whether or not search is conducted over the lambda space specified). In addition, h2o models can be stopped early with specification of stopping metrics like misclassification error, rsquared and mean squared error. Every model has an associated model id which can be referenced for future model iterations. In the model below, a 5-fold cross validation was performed with alpha level of 0.1. As mentioned above, the logistic model below attempted to predict the occurrence of departure delay by variables including year, arrival delay, carrier, air time, distance, week and season. 
+
+```{r logmod29, eval = FALSE}
+myX = setdiff(colnames(training), c("dep_delayIn", 
+                                    "orig_id", "hour", 
+                                    "month", "weekend"))
+ 
+regmod <- h2o.glm(y = "dep_delayIn", x = myX, 
+                  training_frame = training, family = "binomial",
+        alpha = 0.1, lambda_search = FALSE, nfolds = 5)
+```
+
+## Model Assessment
+Model performance was assessed with the h2o.performance function, which provides access to evaluation metrics like MSE, RMSE, LogLoss, AUC and $R^{2}$. The $R^{2}$ for this model was 0.710 and the AUC was 0.987 as shown by `r ref("Hyarn20")`. The $R^{2}$ value indicated that about 71% of the variation in departure delay was accounted for by predictors year, arrival delay, carrier, air time, distance, week and season. In addition to the h2o.performance function, h2o.auc and h2o.confusionMatrix (see `r ref("Hyarn26")`) was used to retrieve the analogous parameters. The AUC curve was visualized as shown by figure `r ref("Hyarn48")` with the plot(h2o.performance) command. 
+
+```{r asses, eval = FALSE}
+h2o.performance(regmod) 
+h2o.auc(regmod) 
+h2o.confusionMatrix(regmod) 
+accuracy <- (mat$No[1]+mat$Yes[2])/(mat$No[1]+
+                                      mat$No[2]+mat$Yes[1]+
+                                      mat$Yes[2]) 
+plot(h2o.performance(regmod)) #plot the auc curve 
+```
+
+```{r perfo, results = "asis", echo = FALSE}
+label(path = "figure/PerformanceLogMod.png", caption = "Model Performance", 
+      label = "Hyarn20", type = "figure", scale=0.7)
+```
+
+```{r confus, results = "asis", echo = FALSE}
+label(path = "figure/confMatLog.png", caption = "Confusion Matrix", 
+      label = "Hyarn26", type = "figure", scale = 0.8)
+```
+
+```{r varimp2, results = "asis", echo = FALSE}
+label(path = "figure/ROCCurveLog-3.png", caption = "AUC Curve", 
+      label = "Hyarn48", type = "figure", scale=0.8)
+```
+
+\clearpage
+
+As the variable importance plot in `r ref("Hyarn34")` shows, arrival delay was most important in predicting the occurrence of departure delays greater than 30 minutes. Arrival delay was followed by air time and distance predictors. Air time appears to be a negative predictor of delay indicating that flights with high air time appear less likely to experience departure delays greater than 30 minutes. In comparison, flights that cover more distance are more likely to experience departure delays greater than 30 minutes. Southwest (WN) and United Airlines (UA) were more important at predicting departure delays greater than 30 minutes while US Airways (US) did not. Year 2008 and 2009 negatively predicted departure delays greater than 30 minutes while year 2015 appeared to be more likely to experience departure delays greater than 30 minutes. In comparison, summer appeared to be an important season for predicting departure delay greater than 30 minutes. 
+
+```{r assess, eval = FALSE}
+h2o.varimp(regmod) #compute variable importance
+h2o.varimp_plot(regmod) #plot variable importance
+```
+
+```{r varimp, results = "asis", echo = FALSE}
+label(path = "figure/VarImpPlot-3.png", caption = "Variable Importance", 
+      label = "Hyarn34", type = "figure")
+```
+
+\clearpage
+
+## Making Predictions 
+After model assessments were analyzed, predictions can be performed on the test set. The accuracy of the test set was calculated and compared with the accuracy of the cross-validated training set. In this case, accuracy of the test set of 0.967 compares with the accuracy of the training data of 0.966. Since the error rates are similar, occurrence of overfitting was reduced. In addition to comparing the accuracy of the test with the training set, accuracy of the training data can also be compared with the accuracy of the validation data (see Deep Learning).
+
+```{r predile, eval = FALSE}
+pred <- h2o.performance(object = regmod, newdata = test) 
+mean(pred$predict==test$dep_delayIn) #accuracy of test set 
+```
+
+## Connection Shutdown 
+The established spark connection was disconnected with the spark_disconnect command as shown below. 
+
+```{r shutdown, eval = FALSE}
+spark_disconnect(sc) #disconnect the spark session 
+h2o.shutdown(prompt=FALSE) #close the H2O connection 
+```
+
+## Conclusion
+This chapter discussed concepts like connecting to local or YARN connection, partitioning datasets and performing generalized linear regression modeling. Additionally model assessments were discussed. 
+
+Overall arrival delay appeared to be most important in predicting departure delay greater than 30 minutes indicating that flights with increased arrival delay may have increased tendency to experience departure delay. Air time and distance also appeared to be important in predicting occurrence of departure delay greater than 30 minutes. Higher air time coverage thus seemed to decrease the occurrence of departure delay suggesting that flights that have been flying for a while may have less chance of experiencing departure delay. This finding does not seem intuitive but it may be the case that if the aircraft is flying for a while, it is more adept at handling delays. More distance coverage is associated with higher likelihood of departure delay greater than 30 minutes. Summer also increased chance of departure delay which seems intuitive since it is typically a busy season for vacations as well as tourist explorations. There also appeared to be an increased likelihood of departure delay greater than 30 minutes in more recent years like 2015 than in 2008 or 2009 which could point to an increased trend in air travel resulting in increased traffic and consequently higher likelihood of experiencing departure delay. 

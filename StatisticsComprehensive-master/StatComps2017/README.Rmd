@@ -1,0 +1,3 @@
+
+All chapter files are located in the STAT495-Javaid folder under StatComps2017-02. The final knitted document is called skeleton.pdf. The shiny app visualization is located on https://r.amherst.edu/apps/ajavaid17/Comps2017Flights/FlightsExpo/. There is about half a minute app loading wait time. Additionally disregard any red errors prompting for the app authority contact and continue clicking on the specified button to accomplish event of interest. The app and the associated data files are located under the Comps2017Flights folder under local ShinyApps folder. All Hadoop code files are located locally on the Hadoop server and can be forwaded to the comps administrators upon queries and inspections. 
+
